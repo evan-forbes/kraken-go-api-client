@@ -197,6 +197,39 @@ func (api *KrakenAPI) OHLC(pair string) (*OHLCResponse, error) {
 	return ret, nil
 }
 
+// OHLC returns a OHLCResponse struct based on the given pair
+func (api *KrakenAPI) OHLCInterval(pair string, intr int64) (*OHLCResponse, error) {
+	urlValue := url.Values{}
+	urlValue.Add("pair", pair)
+	urlValue.Add("interval", strconv.FormatInt(intr, 10))
+
+	// Returns a map[string]interface{} as an interface{}
+	interfaceResponse, err := api.queryPublic("OHLC", urlValue, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Converts the interface into map[string]interface{}
+	mapResponse := interfaceResponse.(map[string]interface{})
+	// Extracts the list of OHLC from the map to build a slice of interfaces
+	OHLCsUnstructured := mapResponse[pair].([]interface{})
+
+	ret := new(OHLCResponse)
+	for _, OHLCInterfaceSlice := range OHLCsUnstructured {
+		OHLCObj, OHLCErr := NewOHLC(OHLCInterfaceSlice.([]interface{}))
+		if OHLCErr != nil {
+			return nil, OHLCErr
+		}
+
+		ret.OHLC = append(ret.OHLC, OHLCObj)
+	}
+
+	ret.Pair = pair
+	ret.Last = mapResponse["last"].(float64)
+
+	return ret, nil
+}
+
 // TradesHistory returns the Trades History within a specified time frame (start to end).
 func (api *KrakenAPI) TradesHistory(start int64, end int64, args map[string]string) (*TradesHistoryResponse, error) {
 	params := url.Values{}
